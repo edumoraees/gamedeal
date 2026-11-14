@@ -1,0 +1,21 @@
+global:
+  scrape_interval: 10s
+  evaluation_interval: 10s
+
+scrape_configs:
+  # Os alvos são descobertos no Consul: qualquer instância registrada com a tag "metrics"
+  # é coletada automaticamente, sem IPs ou portas fixas neste arquivo.
+  - job_name: gamedeal-services
+    metrics_path: /actuator/prometheus
+    consul_sd_configs:
+      - server: consul:8500
+        tags: [metrics]
+    relabel_configs:
+      - source_labels: [__meta_consul_service]
+        target_label: application
+      - source_labels: [__meta_consul_service_id]
+        target_label: instance
+
+  - job_name: prometheus
+    static_configs:
+      - targets: [localhost:9090]

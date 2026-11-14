@@ -1,0 +1,223 @@
+# =============================================================================
+# GameDeal - ambiente completo do backend
+#   cp .env.example .env
+#   docker compose up --build
+# Pontos de acesso: Gateway :8080 | Consul :8500 | Grafana :3000 | Zipkin :9411 | Prometheus :9090
+# =============================================================================
+name: gamedeal
+
+x-db-env: &db-env
+  POSTGRES_USER: ${DB_USER:?copie .env.example para .env}
+  POSTGRES_PASSWORD: ${DB_PASSWORD:?copie .env.example para .env}
+
+x-db-healthcheck: &db-healthcheck
+  test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+  interval: 5s
+  timeout: 5s
+  retries: 20
+
+x-service-env: &service-env
+  CONSUL_HOST: consul
+  CONSUL_PORT: "8500"
+
+x-service-base: &service-base
+  restart: unless-stopped
+  environment:
+    <<: *service-env
+
+services:
+  # --------------------------------------------------------------- Service Registry + Config
+  consul:
+    image: hashicorp/consul:1.20
+    command: ["agent", "-server", "-bootstrap-expect=1", "-ui", "-client=0.0.0.0", "-data-dir=/consul/data"]
+    ports:
+      - "8500:8500"
+    volumes:
+      - consul_data:/consul/data
+    healthcheck:
+      test: ["CMD", "consul", "members"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  consul-config:
+    image: hashicorp/consul:1.20
+    depends_on:
+      consul:
+        condition: service_healthy
+    environment:
+      CONSUL_HTTP_ADDR: http://consul:8500
+      DB_USER: ${DB_USER:?copie .env.example para .env}
+      DB_PASSWORD: ${DB_PASSWORD:?copie .env.example para .env}
+      JWT_SECRET: ${JWT_SECRET:?copie .env.example para .env}
+    volumes:
+      - ./infra/consul/load-config.sh:/load-config.sh:ro
+    entrypoint: ["/bin/sh", "/load-config.sh"]
+    restart: "no"
+
+  # --------------------------------------------------------------- Bancos (Database per Service)
+  auth-db:
+    image: postgres:16-alpine
+    environment:
+      <<: *db-env
+      POSTGRES_DB: db_auth
+    volumes:
+      - auth_db_data:/var/lib/postgresql/data
+    healthcheck: *db-healthcheck
+
+  catalog-db:
+    image: postgres:16-alpine
+    environment:
+      <<: *db-env
+      POSTGRES_DB: db_catalog
+    volumes:
+      - catalog_db_data:/var/lib/postgresql/data
+    healthcheck: *db-healthcheck
+
+  order-db:
+    image: postgres:16-alpine
+    environment:
+      <<: *db-env
+      POSTGRES_DB: db_order
+    volumes:
+      - order_db_data:/var/lib/postgresql/data
+    healthcheck: *db-healthcheck
+
+  currency-db:
+    image: postgres:16-alpine
+    environment:
+      <<: *db-env
+      POSTGRES_DB: db_currency
+    volumes:
+      - currency_db_data:/var/lib/postgresql/data
+    healthcheck: *db-healthcheck
+
+  # --------------------------------------------------------------- Microservices
+  auth-service:
+    <<: *service-base
+    build: ./auth-service
+    depends_on:
+      consul-config: { condition: service_completed_successfully }
+      auth-db: { condition: service_healthy }
+      zipkin: { condition: service_started }
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c '</dev/tcp/127.0.0.1/8081' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 40s
+
+  currency-service:
+    <<: *service-base
+    build: ./currency-service
+    depends_on:
+      consul-config: { condition: service_completed_successfully }
+      currency-db: { condition: service_healthy }
+      zipkin: { condition: service_started }
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c '</dev/tcp/127.0.0.1/8084' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 40s
+
+  catalog-service:
+    <<: *service-base
+    build: ./catalog-service
+    depends_on:
+      consul-config: { condition: service_completed_successfully }
+      catalog-db: { condition: service_healthy }
+      zipkin: { condition: service_started }
+    volumes:
+      - catalog_images:/data/images
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c '</dev/tcp/127.0.0.1/8082' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 40s
+
+  order-service:
+    <<: *service-base
+    build: ./order-service
+    depends_on:
+      consul-config: { condition: service_completed_successfully }
+      order-db: { condition: service_healthy }
+      zipkin: { condition: service_started }
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c '</dev/tcp/127.0.0.1/8083' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 40s
+
+  # --------------------------------------------------------------- API Gateway (único ponto de entrada)
+  gateway:
+    <<: *service-base
+    build: ./gateway
+    ports:
+      - "8080:8080"
+    depends_on:
+      consul-config: { condition: service_completed_successfully }
+      auth-service: { condition: service_healthy }
+      catalog-service: { condition: service_healthy }
+      order-service: { condition: service_healthy }
+      currency-service: { condition: service_healthy }
+
+  # --------------------------------------------------------------- Observabilidade
+  zipkin:
+    image: openzipkin/zipkin:3
+    ports:
+      - "9411:9411"
+
+  prometheus:
+    image: prom/prometheus:v3.4.0
+    depends_on:
+      consul: { condition: service_healthy }
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./infra/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+
+  loki:
+    image: grafana/loki:3.5.0
+    command: ["-config.file=/etc/loki/local-config.yaml"]
+    volumes:
+      - loki_data:/loki
+
+  alloy:
+    image: grafana/alloy:v1.8.0
+    command: ["run", "--server.http.listen-addr=0.0.0.0:12345", "/etc/alloy/config.alloy"]
+    depends_on:
+      loki: { condition: service_started }
+    volumes:
+      - ./infra/alloy/config.alloy:/etc/alloy/config.alloy:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+
+  grafana:
+    image: grafana/grafana:12.0.0
+    depends_on:
+      - prometheus
+      - loki
+      - zipkin
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin}
+    volumes:
+      - ./infra/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./infra/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana_data:/var/lib/grafana
+
+volumes:
+  consul_data:
+  auth_db_data:
+  catalog_db_data:
+  order_db_data:
+  currency_db_data:
+  catalog_images:
+  prometheus_data:
+  loki_data:
+  grafana_data:
