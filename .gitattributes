@@ -1,0 +1,5 @@
+# Scripts executados dentro de containers Linux precisam de quebra de linha LF,
+# mesmo quando o repositório é clonado no Windows.
+*.sh    text eol=lf
+*.alloy text eol=lf
+*.yml   text eol=lf

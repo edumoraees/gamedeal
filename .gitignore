@@ -1,0 +1,23 @@
+# Segredos
+.env
+*.env.local
+
+# Backend (Maven)
+target/
+*.class
+*.log
+
+# Frontend (Expo / Node)
+node_modules/
+.expo/
+dist/
+web-build/
+*.tsbuildinfo
+
+# IDEs e sistema
+.idea/
+.vscode/
+*.iml
+.DS_Store
+Thumbs.db
+.claude/
