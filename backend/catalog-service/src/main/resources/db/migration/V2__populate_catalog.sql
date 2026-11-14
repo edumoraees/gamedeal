@@ -1,0 +1,52 @@
+INSERT INTO tb_game (name, slug) VALUES
+    ('Counter-Strike 2',   'cs2'),
+    ('Valorant',           'valorant'),
+    ('World of Warcraft',  'wow'),
+    ('League of Legends',  'lol'),
+    ('Fortnite',           'fortnite'),
+    ('Dota 2',             'dota2');
+
+-- Vendedores de demonstração: 1 = Lula_Trader, 2 = Nick, 3 = Demon_Trader (mesmos ids do auth-service)
+INSERT INTO tb_listing (seller_id, seller_name, title, description, category, subcategory, rarity, game_id, price, quantity) VALUES
+    (3, 'Demon_Trader', 'Eldritch Karambit | Crimson Ember',
+        'Faca Karambit com padrão Crimson Ember (Phase 2), float 0.0031 (Factory New). Entrega peer-to-peer instantânea via cofre seguro.',
+        'SKIN', NULL, 'LEGENDARY', 1, 1249.99, 1),
+    (1, 'Lula_Trader', 'Phase Blade S3',
+        'Lâmina temporada 3 com acabamento holográfico. Item tradeável imediatamente.',
+        'ARMA', NULL, 'EPIC', 2, 49.99, 3),
+    (1, 'Lula_Trader', '1000 VP Bundle',
+        'Pacote com 1000 Valorant Points entregue por código de resgate.',
+        'MOEDA', NULL, NULL, 2, 79.00, 20),
+    (1, 'Lula_Trader', 'Gloomweaver Bow',
+        'Arco lendário com efeito de sombra. Entregue por troca dentro do jogo.',
+        'ARMA', NULL, 'LEGENDARY', 3, 98.00, 2),
+    (3, 'Demon_Trader', 'Conta Valorant Imortal 2',
+        'Conta com 40 skins, e-mail alterável e sem punições. Dados entregues após confirmação.',
+        'CONTA', NULL, NULL, 2, 650.00, 1),
+    (1, 'Lula_Trader', '20.000 WoW Gold',
+        'Gold entregue por correio no servidor escolhido em até 1 hora.',
+        'MOEDA', NULL, NULL, 3, 18.50, 50),
+    (2, 'Nick', 'Valorant Silver to Diamond Carry',
+        'Subo sua conta de Prata a Diamante com jogos acompanhados e dicas em tempo real.',
+        'SERVICO', 'Rank Boost', NULL, 2, 240.00, 5),
+    (2, 'Nick', 'Coaching competitivo de CS2',
+        'Sessões de 1h com análise de demo, mira, utilitárias e posicionamento.',
+        'SERVICO', 'Coaching', NULL, 1, 180.00, 10),
+    (2, 'Nick', 'Upar personagem WoW 1-80',
+        'Acompanhamento completo de missões e masmorras até o nível máximo.',
+        'SERVICO', 'Upar', NULL, 3, 320.00, 3),
+    (3, 'Demon_Trader', 'Rank I Gladiator Title',
+        'Ajuda para conquistar o título Gladiator na arena da temporada atual.',
+        'SERVICO', 'Rank Boost', NULL, 3, 489.00, 2);
+
+INSERT INTO tb_listing_image (listing_id, position, url) VALUES
+    (1, 0, 'https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&w=900&q=80'),
+    (2, 0, 'https://images.unsplash.com/photo-1511512578047-dfb367046420?auto=format&fit=crop&w=900&q=80'),
+    (3, 0, 'https://images.unsplash.com/photo-1614680376593-902f74cf0d41?auto=format&fit=crop&w=900&q=80'),
+    (4, 0, 'https://images.unsplash.com/photo-1538481199705-c710c4e965fc?auto=format&fit=crop&w=900&q=80'),
+    (5, 0, 'https://images.unsplash.com/photo-1552820728-8b83bb6b773f?auto=format&fit=crop&w=900&q=80'),
+    (6, 0, 'https://images.unsplash.com/photo-1541140532154-b024d705b90a?auto=format&fit=crop&w=900&q=80'),
+    (7, 0, 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=400&q=80'),
+    (8, 0, 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=400&q=80'),
+    (9, 0, 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=400&q=80'),
+    (10, 0, 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=400&q=80');
