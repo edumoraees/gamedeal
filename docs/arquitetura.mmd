@@ -1,0 +1,43 @@
+flowchart TB
+  app["📱 App React Native (Expo)"] -->|"HTTPS + JWT"| gw["API Gateway :8080<br/>valida JWT · roteia via Consul"]
+
+  gw -->|"lb://auth-service"| auth["auth-service :8081<br/>cadastro, login, JWT"]
+  gw -->|"lb://catalog-service"| catalog["catalog-service :8082<br/>anúncios, jogos, fotos"]
+  gw -->|"lb://order-service"| order["order-service :8083<br/>pedidos, avaliações"]
+  gw -->|"lb://currency-service"| currency["currency-service :8084<br/>cotações"]
+
+  order ==>|"Timeout + Retry + Circuit Breaker"| catalog
+  catalog ==>|"Timeout + Retry + Circuit Breaker"| currency
+  currency ==>|"Timeout + Retry + Circuit Breaker"| bcb["API PTAX do Banco Central"]
+
+  auth --- authdb[("PostgreSQL<br/>db_auth")]
+  catalog --- catalogdb[("PostgreSQL<br/>db_catalog")]
+  order --- orderdb[("PostgreSQL<br/>db_order")]
+  currency --- currencydb[("PostgreSQL<br/>db_currency")]
+
+  subgraph apoio["Serviços de apoio"]
+    direction LR
+    consul["Consul<br/>Service Registry + Config KV"]
+    zipkin["Zipkin<br/>tracing"]
+    prom["Prometheus<br/>métricas"]
+    loki["Loki + Alloy<br/>logs"]
+    grafana["Grafana<br/>painéis"]
+    grafana --> prom
+    grafana --> loki
+    grafana --> zipkin
+    prom -. "descobre alvos" .-> consul
+  end
+
+  business(["Gateway e microservices:<br/>auto-registro e configuração no Consul,<br/>traces no Zipkin, métricas e logs"]) -.-> apoio
+
+  classDef svc fill:#161A24,stroke:#00FFCC,color:#fff,stroke-width:1.5px
+  classDef edge fill:#0B0E14,stroke:#FF007F,color:#fff,stroke-width:2px
+  classDef db fill:#1B2130,stroke:#8A94A6,color:#fff
+  classDef ext fill:#252B3A,stroke:#FACC15,color:#fff
+  classDef note fill:#0B0E14,stroke:#8A94A6,color:#8A94A6,stroke-dasharray:4 3
+  class auth,catalog,order,currency svc
+  class gw,app edge
+  class authdb,catalogdb,orderdb,currencydb db
+  class bcb ext
+  class consul,zipkin,prom,loki,grafana svc
+  class business note
